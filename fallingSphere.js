@@ -1,5 +1,5 @@
 class Circle {
-    constructor(x, y, radius, speedX, speedY, density) {
+    constructor(x, y, radius, speedX, speedY, density, forceRadius) {
         this.x = x;
         this.y = y;
         this.radius = radius;
@@ -7,9 +7,11 @@ class Circle {
         this.speedY = speedY;
         this.density = density;
         this.mass = density * Math.PI * radius * radius;
+        this.forceRadius = forceRadius;
     }
 
     update() {
+
         this.x += this.speedX;
         this.y += this.speedY;
         this.speedY += 0.25;
@@ -21,52 +23,53 @@ class Circle {
 
         if (this.y >= height - this.radius) {
             this.y = height - this.radius;
-            this.speedY = -this.speedY * 0.8;
+            if (this.speedY > 1.5) {
+                this.speedY = -this.speedY * 0.4;
+            }
         }
     }
 
     draw() {
-        fill(255, 0, 0);
+        fill(0, 8, 255);
         circle(this.x, this.y, this.radius * 2);
     }
 
-
-    //update this for vector
-
-    /*
-    Logic for collision vector: each circle has speed x, speed y (no mass yet). If collision, swap speeds
-    Adding mass: Get the ratio of the circles, multiply speed by ratio
-    */
-
-    checkCollision(other) {
+    applyForce(other) {
         let distance = dist(this.x, this.y, other.x, other.y);
-        if (distance <= this.radius + other.radius) {
-            // Collision detected
+        if (distance < this.forceRadius + other.forceRadius) {
+            let maxForceStrength = 2; // Set the maximum force strength
+            let maxSpeed = 2; // Set the maximum speed
 
-            // Calculate the normal vector between the circles
-            let nx = (other.x - this.x) / distance;
-            let ny = (other.y - this.y) / distance;
+            let forceStrength = (1 / distance) * 20;
+            forceStrength = min(forceStrength, maxForceStrength);
+            let forceX = (this.x - other.x) * forceStrength;
+            let forceY = (this.y - other.y) * forceStrength;
 
-            // Calculate the tangent vector
-            let tx = -ny;
-            let ty = nx;
+            let newSpeedX = this.speedX + forceX / this.mass;
+            let newSpeedY = this.speedY + forceY / this.mass;
+            let newSpeed = sqrt(newSpeedX * newSpeedX + newSpeedY * newSpeedY);
 
-            // Calculate the dot products
-            let dpTan1 = this.speedX * tx + this.speedY * ty;
-            let dpTan2 = other.speedX * tx + other.speedY * ty;
+            if (newSpeed > maxSpeed) {
+                let ratio = maxSpeed / newSpeed;
+                newSpeedX *= ratio;
+                newSpeedY *= ratio;
+            }
 
-            let dpNorm1 = this.speedX * nx + this.speedY * ny;
-            let dpNorm2 = other.speedX * nx + other.speedY * ny;
+            this.speedX = newSpeedX;
+            this.speedY = newSpeedY;
 
-            // Calculate the new normal velocities
-            let m1 = (dpNorm1 * (this.mass - other.mass) + 2 * other.mass * dpNorm2) / (this.mass + other.mass);
-            let m2 = (dpNorm2 * (other.mass - this.mass) + 2 * this.mass * dpNorm1) / (this.mass + other.mass);
+            newSpeedX = other.speedX - forceX / other.mass;
+            newSpeedY = other.speedY - forceY / other.mass;
+            newSpeed = sqrt(newSpeedX * newSpeedX + newSpeedY * newSpeedY);
 
-            // Update the velocities
-            this.speedX = tx * dpTan1 + nx * m1;
-            this.speedY = ty * dpTan1 + ny * m1;
-            other.speedX = tx * dpTan2 + nx * m2;
-            other.speedY = ty * dpTan2 + ny * m2;
+            if (newSpeed > maxSpeed) {
+                let ratio = maxSpeed / newSpeed;
+                newSpeedX *= ratio;
+                newSpeedY *= ratio;
+            }
+
+            other.speedX = newSpeedX;
+            other.speedY = newSpeedY;
         }
     }
 }
@@ -76,17 +79,19 @@ let circles = [];
 //initializes circles, add corresponding values
 function setup() {
     createCanvas(900, 600);
-    let numBalls = 10;
+    let numBalls = 500;
 
     for (let i = 0; i < numBalls; i++) {
         let x = random(50, width - 50);
         let y = random(50, height - 50);
-        let radius = random(10, 30);
-        let speedX = random(-2, 2);
-        let speedY = random(-2, 2);
+        let radius = 3;
+        // let speedX = random(-.5, .5);
+        let speedX = 0;
+        let speedY = random(-.5, .5);
         let density = 1;
+        let forceRadius = 7
 
-        let newCircle = new Circle(x, y, radius, speedX, speedY, density);
+        let newCircle = new Circle(x, y, radius, speedX, speedY, density, forceRadius);
 
         // Check for overlaps with existing balls
         for (let j = 0; j < circles.length; j++) {
@@ -120,12 +125,19 @@ function draw() {
     background(220);
     for (let i = 0; i < circles.length; i++) {
         for (let j = i + 1; j < circles.length; j++) {
-            circles[i].checkCollision(circles[j]);
+            // circles[i].checkCollision(circles[j]);
+            circles[i].applyForce(circles[j]);
+            checkOverlap(circles[i], circles[j]);
         }
         circles[i].update();
         circles[i].draw();
         // displayVariables(circles[i], i);
     }
+    let fps = frameRate();
+    fill(0);
+    textAlign(LEFT, TOP);
+    textSize(16);
+    text("FPS: " + fps.toFixed(2), 10, 10);
 }
 
 function displayVariables(circle, index) {
