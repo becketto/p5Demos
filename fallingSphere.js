@@ -75,10 +75,45 @@ let circles = [];
 
 //initializes circles, add corresponding values
 function setup() {
-    createCanvas(600, 600);
-    circles.push(new Circle(200, 250, 25, 2, 0, 1));
-    circles.push(new Circle(400, 350, 40, -1.5, 0, 0.5));
-    circles.push(new Circle(500, 350, 10, -1.5, 0, 0.5));
+    createCanvas(900, 600);
+    let numBalls = 10;
+
+    for (let i = 0; i < numBalls; i++) {
+        let x = random(50, width - 50);
+        let y = random(50, height - 50);
+        let radius = random(10, 30);
+        let speedX = random(-2, 2);
+        let speedY = random(-2, 2);
+        let density = 1;
+
+        let newCircle = new Circle(x, y, radius, speedX, speedY, density);
+
+        // Check for overlaps with existing balls
+        for (let j = 0; j < circles.length; j++) {
+            checkOverlap(newCircle, circles[j]);
+        }
+
+        circles.push(newCircle);
+    }
+}
+
+function checkOverlap(circle1, circle2) {
+    let distance = dist(circle1.x, circle1.y, circle2.x, circle2.y);
+    if (distance < circle1.radius + circle2.radius) {
+        // Balls are overlapping, calculate the displacement vector
+        let dx = circle2.x - circle1.x;
+        let dy = circle2.y - circle1.y;
+        let angle = atan2(dy, dx);
+        let overlapDistance = circle1.radius + circle2.radius - distance;
+
+        // Displace the balls along the displacement vector
+        let displaceX = cos(angle) * overlapDistance;
+        let displaceY = sin(angle) * overlapDistance;
+        circle1.x -= displaceX;
+        circle1.y -= displaceY;
+        circle2.x += displaceX;
+        circle2.y += displaceY;
+    }
 }
 
 function draw() {
@@ -89,7 +124,7 @@ function draw() {
         }
         circles[i].update();
         circles[i].draw();
-        displayVariables(circles[i], i);
+        // displayVariables(circles[i], i);
     }
 }
 
